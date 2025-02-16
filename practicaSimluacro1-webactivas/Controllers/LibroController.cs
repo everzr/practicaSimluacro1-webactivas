@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using practicaSimluacro1_webactivas.Models;
+using System.Diagnostics.Metrics;
 
 namespace practicaSimluacro1_webactivas.Controllers
 {
@@ -18,19 +19,30 @@ namespace practicaSimluacro1_webactivas.Controllers
 
         [HttpGet]
         [Route("GetAll")]
-        public IActionResult Get()
+        public IActionResult GetAll(int pageNumber = 1)
         {
-            List<libro> listadoLibro = (from l in _bibliotecaContext.libro select l).ToList();
-            if (listadoLibro.Count() == 0)
+           
+            int totalRegistros = _bibliotecaContext.libro.Count();
+            int cantidadPorPagina = totalRegistros <= 10 ? totalRegistros : 10;  // Si hay 8 registros o menos, mostrar todo, sino, limitar a 10
+
+            // Si hay más de 10 registros, paginamos, de lo contrario, mostramos todos
+            var listadoLibro = _bibliotecaContext.libro
+                                                 .Skip((pageNumber - 1) * cantidadPorPagina)
+                                                 .Take(cantidadPorPagina)
+                                                 .ToList();
+
+            if (listadoLibro.Count == 0)
             {
-                return NotFound();
+                return NotFound("No se encontraron libros");
             }
+
             return Ok(listadoLibro);
         }
 
+
         [HttpGet]
         [Route("GetById/{id}")]
-        public IActionResult Get(int id)
+        public IActionResult GetById(int id)
         {
             var listadoAutores = (from ll in _bibliotecaContext.libro
                                   join a in _bibliotecaContext.autor
@@ -55,8 +67,105 @@ namespace practicaSimluacro1_webactivas.Controllers
         }
 
         [HttpGet]
-        [Route("Get")]
+        [Route("GetLibroAfterYear2000")]
+        public IActionResult GetLibros2000() {
 
+            var listadoLibros = (from ll in _bibliotecaContext.libro
+                                 where ll.anio_publicacion >2000
+                                 select ll).ToList();
+            if(listadoLibros.Count == 0) 
+            {
+                return NotFound(); 
+            }
+
+            return Ok(listadoLibros);
+        
+        }
+
+        [HttpGet]
+        [Route("GetLibroByTitulo/{titulo}")]
+        public IActionResult GetLibroByTitulo(string titulo)
+        {
+            var listadoLibros = (from ll in _bibliotecaContext.libro
+                                 where ll.titulo.Contains(titulo)
+                                 select ll).ToList();
+
+            if (listadoLibros.Count == 0)
+            {
+                return NotFound(new { Message = "No se encontraron libros con el título proporcionado" });
+            }
+
+            return Ok(listadoLibros);
+        }
+
+        [HttpGet]
+        [Route("GetLibrosMasRecientes")]
+        public IActionResult GetLibrosMasRecientes()
+        {
+            
+
+            var librosMasRecientes = (from ll in _bibliotecaContext.libro
+                                      select ll
+                                      )
+                                    .OrderByDescending(x => x.anio_publicacion)
+                                    .ToList();
+
+            if (librosMasRecientes == null)
+            {
+                return NotFound();
+            }
+
+
+
+            return Ok(librosMasRecientes);
+        }
+
+        [HttpGet]
+        [Route("GetCantLibrosByYear")]
+        public IActionResult GetCantLibrosByYear()
+        {
+
+
+            var librosMasRecientes = (from ll in _bibliotecaContext.libro
+                                      group ll by ll.anio_publicacion into grupo
+                                      select new
+                                      {
+                                          anio = grupo.Key,
+                                          cant_libros = grupo.Count(),
+                                      }
+                                      
+                                      )
+                                    .OrderByDescending(x => x.anio)
+                                    .ToList();
+
+            if (librosMasRecientes == null)
+            {
+                return NotFound();
+            }
+
+
+
+            return Ok(librosMasRecientes);
+        }
+
+        [HttpGet]
+        [Route("GetFirstLibroAutor/{id}")]
+        public IActionResult GetFirstLibroAutor(int id)
+        {
+            var libro = (from ll in _bibliotecaContext.libro
+                         join aa in _bibliotecaContext.autor
+                         on ll.autor_id equals aa.id
+                         select new {
+                         
+                             autor = aa.nombre,
+                             primero_libro = ll.titulo,
+                             ll.anio_publicacion
+
+                         }).OrderBy(x => x.anio_publicacion).Take(1).ToList();
+
+            return Ok(libro);
+
+        }
 
         [HttpPost]
         [Route("Add")]
