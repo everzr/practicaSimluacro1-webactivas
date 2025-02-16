@@ -1,0 +1,6 @@
+@practicaSimluacro1_webactivas_HostAddress = http://localhost:5036
+
+GET {{practicaSimluacro1_webactivas_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
